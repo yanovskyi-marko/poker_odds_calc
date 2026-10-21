@@ -1,5 +1,11 @@
 import random as r
 import itertools as iter
+import time as t
+import datetime as dt
+import sys
+
+ 
+
 
 points_for_flush=10
 points_for_straight=9
@@ -83,13 +89,13 @@ def points_from_highest_card(hand):
 
     for i in range(5-len(hand), 5):
         sum+=hand[(5-(len(hand))-i)]*((3)**i) # x to the power of i multiplier
-    return (sum/(13*(3**4)*5))
+    return (sum/(13*5))
 #to calculate points we just add all points together
 def total_points_hand(hand):
     dc = get_list_of_duplicates(get_colors(hand))
     dn = get_list_of_duplicates(get_numbers(hand))
     s = suites(get_numbers(hand))
-    total = points_from_flush(dc)+points_from_duplicates(dn)+points_from_straight(s)+points_from_highest_card(hand)
+    total = (points_from_flush(dc)+points_from_duplicates(dn)+points_from_straight(s))*(2**5)+points_from_highest_card(hand)
     return total
 
 
@@ -120,9 +126,15 @@ def calculate_the_winning_with_7_cards_in_the_pool(pool,visible_cards,not_visibl
     # here I had a bug where I didn't use the max function to find the best hand from all possible hands that my opponent can have(it's the best hand from seven cards) instead I just added all possible hands into opponent_possible_hands list and then it made my probabilities way to low
 
     #Step four : filter the cards that are the better then yours
-
-    better_hands = list(filter(lambda p : total_points_hand(p)>total_points_from_best_hand, opponent_possible_hands))
-
+    
+    better_hands = [i for i in opponent_possible_hands if total_points_hand(i)>total_points_from_best_hand]
+    better_hands_prime = [i for i in opponent_possible_hands if not total_points_hand(i)>total_points_from_best_hand]
+    print(visible_cards)
+    print(best_hand)
+    print("total points from best hand"+str(total_points_from_best_hand))
+    print("better hands"+str([i for i in better_hands_prime]))
+    print((str(len(better_hands_prime))+" "+str(len(opponent_possible_hands))))
+    print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
 
     #Step five : calculate the ratio of all possible hands that are better that your opponent can have devided by all possible hands that your opponent can have
     probability_of_loosing = len(better_hands)/len(opponent_possible_hands)
@@ -135,7 +147,7 @@ def calculate_the_winning_with_the_nth_card_in_the_pool(pool,your_hand):
     possible_pools = [list(i)+pool for i in iter.combinations(not_visible_cards, 5-len(pool))]
     probability_of_loosing=0;
     for p in possible_pools:
-        probability_of_loosing+=calculate_the_winning_with_7_cards_in_the_pool(p, visible_cards,not_visible_cards)
+        probability_of_loosing+=calculate_the_winning_with_7_cards_in_the_pool(p, p+your_hand,not_visible_cards)
     return not_visible_cards, probability_of_loosing/len(possible_pools)
 
 #devide cards into three piles the first that is your hand of two cards, the second is the pool and the third that is not visible to you 
@@ -144,16 +156,39 @@ first_div= r.sample(cards, k=5)
 pool = r.sample(first_div, k=3)
 your_hand = [i for i in first_div if i not in pool]
 
-#pool= [(10, 'Spades'), (10, 'Clubs'), (4, 'Spades'), (10, 'Diamonds'), (10, 'Hearts')]
-#your_hand = [(0,"Spades"),(1,"Clubs")]   
-for i in range(1,4):
-    not_visible_cards, probability_of_loosing = calculate_the_winning_with_the_nth_card_in_the_pool(pool, your_hand)
-    print(str(i)+"th card in the pool")
-    print("pool is :"+str(pool))
-    print("your hand is :"+str(your_hand))
-    print("probability that your opponent will win is: " + str(probability_of_loosing))
-    pool.append(r.choice(not_visible_cards))
 
-all_possible_hands= iter.combinations(cards, 5)
 
+
+def to_measure():
+    s = t.process_time() 
+    for i in range(1,4):
+        not_visible_cards, probability_of_loosing = calculate_the_winning_with_the_nth_card_in_the_pool(pool, your_hand)
+        print(str(i)+"th card in the pool")
+        print("pool is :"+str(pool))
+        print("your hand is :"+str(your_hand))
+        print("probability that your opponent will win is: " + str(probability_of_loosing))
+        pool.append(r.choice(not_visible_cards))
+    e = t.process_time()
+    return e-s
+
+def main():
+    pool= [(4, "Hearts"), (10, 'Diamonds'), (10, 'Hearts'),(10,'Spades'),(10,"Clubs")]
+    your_hand = [(0,"Spades"),(1,"Clubs")]                                                    
+    #all_possible_hands= iter.combinations(cards, 5)                                           
+    args = sys.argv[1:]
+    if len(args)>1 and args[0]=="calculate":
+        with open("speed_results.csv", "a") as myfile:
+            x = dt.datetime.now()
+            time = to_measure()
+            myfile.write(str(time)+";"+str(x)+"\n")
+        return
+    not_visible_cards, probability_of_loosing=calculate_the_winning_with_the_nth_card_in_the_pool(pool, your_hand)
+    print(probability_of_loosing)
+    #print(total_points_hand([(9, 'Diamonds'), (4, 'Hearts'), (10, 'Spades'), (10, 'Diamonds'), (10, 'Hearts')]))
+    #print(total_points_hand([(0, 'Diamonds'), (0, 'Hearts'), (10, 'Spades'), (10, 'Diamonds'), (10, 'Hearts')]))
+
+
+if __name__=="__main__":
+    main()
+    
 
