@@ -11,7 +11,6 @@ cards = [(i,j) for i in numbers for j in colors]
 
 
 
-
 def get_numbers(hand):
     return [i for i,_ in hand]
 
@@ -104,52 +103,57 @@ def total_points_hand(hand):
 #
 #
 #
+def calculate_the_winning_with_7_cards_in_the_pool(pool,visible_cards,not_visible_cards):
 
+    #Step one: calculate a list of all possible hands that you can get from your hand and the pool 
+    your_possible_hands = [list(i) for i in iter.combinations(visible_cards, 5)]
+
+    #Step two: calculate the best hand among those
+    best_hand = max(your_possible_hands, key=lambda p : total_points_hand(p))
+    total_points_from_best_hand=total_points_hand(best_hand)
+
+    #Step three : calculate a list of all possible hands that your opponents can have
+    opponent_visible_cards = [list(i)+pool for i in iter.combinations(not_visible_cards, 2)]
+    opponent_possible_hands= []
+    for k in opponent_visible_cards:
+        opponent_possible_hands.append( max([list(i) for i in iter.combinations(k, 5)], key=lambda p : total_points_hand(p))) 
+    # here I had a bug where I didn't use the max function to find the best hand from all possible hands that my opponent can have(it's the best hand from seven cards) instead I just added all possible hands into opponent_possible_hands list and then it made my probabilities way to low
+
+    #Step four : filter the cards that are the better then yours
+
+    better_hands = list(filter(lambda p : total_points_hand(p)>total_points_from_best_hand, opponent_possible_hands))
+
+
+    #Step five : calculate the ratio of all possible hands that are better that your opponent can have devided by all possible hands that your opponent can have
+    probability_of_loosing = len(better_hands)/len(opponent_possible_hands)
+    # calculating every possible hand in the game
+    return probability_of_loosing
+
+def calculate_the_winning_with_the_nth_card_in_the_pool(pool,your_hand):
+    visible_cards=your_hand+pool
+    not_visible_cards=[i for i in cards if i not in visible_cards]
+    possible_pools = [list(i)+pool for i in iter.combinations(not_visible_cards, 5-len(pool))]
+    probability_of_loosing=0;
+    for p in possible_pools:
+        probability_of_loosing+=calculate_the_winning_with_7_cards_in_the_pool(p, visible_cards,not_visible_cards)
+    return not_visible_cards, probability_of_loosing/len(possible_pools)
 
 #devide cards into three piles the first that is your hand of two cards, the second is the pool and the third that is not visible to you 
-first_div= sorted(r.sample(cards, k=7))
-pool = sorted(r.sample(first_div, k=5))
+
+first_div= r.sample(cards, k=5)
+pool = r.sample(first_div, k=3)
 your_hand = [i for i in first_div if i not in pool]
+
 #pool= [(10, 'Spades'), (10, 'Clubs'), (4, 'Spades'), (10, 'Diamonds'), (10, 'Hearts')]
-#your_hand = [(0,"Spades"),(1,"Clubs")]
-#Step one: calculate a list of all possible hands that you can get from your hand and the pool 
-visible_cards=your_hand+pool
-your_possible_hands = [list(i) for i in iter.combinations(visible_cards, 5)]
+#your_hand = [(0,"Spades"),(1,"Clubs")]   
+for i in range(1,4):
+    not_visible_cards, probability_of_loosing = calculate_the_winning_with_the_nth_card_in_the_pool(pool, your_hand)
+    print(str(i)+"th card in the pool")
+    print("pool is :"+str(pool))
+    print("your hand is :"+str(your_hand))
+    print("probability that your opponent will win is: " + str(probability_of_loosing))
+    pool.append(r.choice(not_visible_cards))
 
-
-#Step two: calculate the best hand among those
-
-best_hand = max(your_possible_hands, key=lambda p : total_points_hand(p))
-total_points_from_best_hand=total_points_hand(best_hand)
-
-#Step three : calculate a list of all possible hands that your opponents can have
-not_visible_cards=[i for i in cards if i not in visible_cards]
-opponent_visible_cards = [list(i)+pool for i in iter.combinations(not_visible_cards, 2)]
-opponent_possible_hands= []
-for k in opponent_visible_cards:
-    opponent_possible_hands.append( max([list(i) for i in iter.combinations(k, 5)], key=lambda p : total_points_hand(p)))
-
-#Step four : filter the cards that are the better then yours
-
-better_hands = list(filter(lambda p : total_points_hand(p)>total_points_from_best_hand, opponent_possible_hands))
-
-
-#Step five : calculate the ratio of all possible hands that are better that your opponent can have devided by all possible hands that your opponent can have
-probability_of_loosing = len(better_hands)/len(opponent_possible_hands)
-# calculating every possible hand in the game
 all_possible_hands= iter.combinations(cards, 5)
 
-l=[i for i in all_possible_hands]
 
-print(pool)
-print(your_hand)
-print(str(best_hand) + str(total_points_from_best_hand))
-print ("the number of possible hands that your opponent can have is : " +str(len(opponent_possible_hands)))
-print("probability that your opponent will win is: " + str(probability_of_loosing))
-
-print(better_hands[:100])
-l.sort(key=total_points_hand, reverse=True)
-
-for i in l[:100]:
-    print (str(list(i)) +" : "+ str(total_points_hand(list(i))) )
-print (len(l))
