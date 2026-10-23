@@ -3,7 +3,7 @@ import itertools as iter
 import time as t
 import datetime as dt
 import sys
-
+from functools import lru_cache
  
 
 
@@ -64,8 +64,8 @@ def points_from_duplicates(duplicates):
 
 #we also know that flush is between three of a kind and full house, but higher then straight so we give 10 points for it
 def points_from_flush(same_color_cards):
-    return points_for_flush if len(same_color_cards)==1 else 0
-#and at last we know that straight is between three of a kind and full house, but lower then flush so we give 9 points for it
+   return 7 if cards[0][1]==cards[1][1]==cards[2][1]==cards[3][1]==cards[4][1] else 0
+   #and at last we know that straight is between three of a kind and full house, but lower then flush so we give 9 points for it
 def points_from_straight(suite):
     return points_for_straight if len(suite) ==1 else 0
 
@@ -91,13 +91,18 @@ def points_from_highest_card(hand):
         sum+=hand[(5-(len(hand))-i)]*((3)**i) # x to the power of i multiplier
     return (sum/(13*5))
 #to calculate points we just add all points together
-def total_points_hand(hand):
+
+@lru_cache(maxsize=None)
+def total_points_hand_prime(c1,c2,c3,c4,c5):
+    hand=[c1,c2,c3,c4,c5]
     dc = get_list_of_duplicates(get_colors(hand))
     dn = get_list_of_duplicates(get_numbers(hand))
     s = suites(get_numbers(hand))
     total = (points_from_flush(dc)+points_from_duplicates(dn)+points_from_straight(s))*(2**5)+points_from_highest_card(hand)
     return total
 
+def total_points_hand(hand):
+    return total_points_hand_prime(hand[0],hand[1],hand[2],hand[3],hand[4])
 
 
 
@@ -109,7 +114,7 @@ def total_points_hand(hand):
 #
 #
 #
-def calculate_the_winning_with_7_cards_in_the_pool(pool,visible_cards,not_visible_cards):
+def calculate_the_winning_with_7_cards_in_the_pool(pool,visible_cards,not_visible_cards,i):
 
     #Step one: calculate a list of all possible hands that you can get from your hand and the pool 
     your_possible_hands = [list(i) for i in iter.combinations(visible_cards, 5)]
@@ -129,13 +134,12 @@ def calculate_the_winning_with_7_cards_in_the_pool(pool,visible_cards,not_visibl
     
     better_hands = [i for i in opponent_possible_hands if total_points_hand(i)>total_points_from_best_hand]
     better_hands_prime = [i for i in opponent_possible_hands if not total_points_hand(i)>total_points_from_best_hand]
-    print(visible_cards)
-    print(best_hand)
-    print("total points from best hand"+str(total_points_from_best_hand))
-    print("better hands"+str([i for i in better_hands_prime]))
-    print((str(len(better_hands_prime))+" "+str(len(opponent_possible_hands))))
-    print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
-
+    #print(visible_cards)
+    #print(best_hand)
+    #print("total points from best hand"+str(total_points_from_best_hand))
+    #print("better hands"+str([i for i in better_hands_prime]))
+    #print((str(len(better_hands_prime))+" "+str(len(opponent_possible_hands))))
+    #print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
     #Step five : calculate the ratio of all possible hands that are better that your opponent can have devided by all possible hands that your opponent can have
     probability_of_loosing = len(better_hands)/len(opponent_possible_hands)
     # calculating every possible hand in the game
@@ -146,8 +150,13 @@ def calculate_the_winning_with_the_nth_card_in_the_pool(pool,your_hand):
     not_visible_cards=[i for i in cards if i not in visible_cards]
     possible_pools = [list(i)+pool for i in iter.combinations(not_visible_cards, 5-len(pool))]
     probability_of_loosing=0;
+    print("calculating "+str(len(possible_pools)) + " hands ")
+    i=0
     for p in possible_pools:
-        probability_of_loosing+=calculate_the_winning_with_7_cards_in_the_pool(p, p+your_hand,not_visible_cards)
+        visible_cards=your_hand+p
+        not_visible_cards=[i for i in cards if i not in visible_cards]
+        probability_of_loosing+=calculate_the_winning_with_7_cards_in_the_pool(p, p+your_hand,not_visible_cards, i)
+        i+=1
     return not_visible_cards, probability_of_loosing/len(possible_pools)
 
 #devide cards into three piles the first that is your hand of two cards, the second is the pool and the third that is not visible to you 
@@ -172,7 +181,7 @@ def to_measure():
     return e-s
 
 def main():
-    pool= [(4, "Hearts"), (10, 'Diamonds'), (10, 'Hearts'),(10,'Spades'),(10,"Clubs")]
+    pool= [(10, 'Hearts'),(10,'Spades'),(10,"Clubs")]
     your_hand = [(0,"Spades"),(1,"Clubs")]                                                    
     #all_possible_hands= iter.combinations(cards, 5)                                           
     args = sys.argv[1:]
@@ -182,8 +191,8 @@ def main():
             time = to_measure()
             myfile.write(str(time)+";"+str(x)+"\n")
         return
-    not_visible_cards, probability_of_loosing=calculate_the_winning_with_the_nth_card_in_the_pool(pool, your_hand)
-    print(probability_of_loosing)
+    #not_visible_cards, probability_of_loosing=calculate_the_winning_with_the_nth_card_in_the_pool(pool, your_hand)
+    #print(probability_of_loosing)
     #print(total_points_hand([(9, 'Diamonds'), (4, 'Hearts'), (10, 'Spades'), (10, 'Diamonds'), (10, 'Hearts')]))
     #print(total_points_hand([(0, 'Diamonds'), (0, 'Hearts'), (10, 'Spades'), (10, 'Diamonds'), (10, 'Hearts')]))
 
